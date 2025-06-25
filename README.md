@@ -24,11 +24,18 @@ The goal is to extract entities and relationships from item descriptions and lor
 
 ### Source
 
-The dataset is derived from the Dark Souls Item Descriptions and lore sources, compiled from community resources like:
+The dataset used in this project was adapted from publicly available community resources, primarily:
 
-- https://github.com/leminerva/dark-souls-knowledge-extraction
+- Dark Souls Knowledge Extraction by leminerva: https://github.com/leminerva/dark-souls-knowledge-extraction
 
-It contains item names, descriptions, and additional knowledge extracted from the game and fan-maintained wikis.
+It contains item names, in-game descriptions, and additional lore knowledge sourced from the game itself and fan-curated wikis.
+
+### Files
+
+- `ds3_clean_texts.json`: A cleaned and pre-processed version of the full dataset, used for downstream analysis and triple extraction.
+- `sampled_lore_entries.json`: A smaller sample of entries used to test and iterate over the extraction process.
+- `ds3.json`: The original raw dataset (not included in this repository due to size constraints; see source link above to download).
+
 
 ### Data Example
 

@@ -13,9 +13,9 @@ st.title("🕹️ Dark Souls Knowledge Graph Explorer")
 # 2. Neo4j connection setup
 st.sidebar.subheader("Database Connection")
 
-uri = st.sidebar.text_input("URI", "neo4j+s://<YOUR_INSTANCE>.databases.neo4j.io")
-user = st.sidebar.text_input("Username", "neo4j")
-password = st.sidebar.text_input("Password", type="password")
+uri = st.secrets["NEO4J_URI"]
+user = st.secrets["NEO4J_USERNAME"]
+password = st.secrets["NEO4J_PASSWORD"]
 
 @st.cache(allow_output_mutation=True)
 def create_driver(uri, user, password):
