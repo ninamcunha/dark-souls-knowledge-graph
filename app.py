@@ -39,8 +39,7 @@ LIMIT {limit}
 """
 
 # 4. Fetch data
-@st.cache_data
-def run_query(driver, query):
+def run_query(query):
     with driver.session() as session:
         result = session.run(query)
         data = [record.data() for record in result]
@@ -48,7 +47,7 @@ def run_query(driver, query):
 
 # 5. Visualize graph
 if driver:
-    df = run_query(driver, cypher_query)
+    df = run_query(cypher_query)
     st.subheader("📄 Graph Data Sample")
     st.dataframe(df)
 
