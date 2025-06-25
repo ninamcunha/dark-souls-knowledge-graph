@@ -8,15 +8,14 @@ The goal is to extract entities and relationships from item descriptions and lor
 
 ## 📄 Project Structure
 
-- notebooks/ — Jupyter Notebook with data processing, graph construction, and documentation of the process.
-- data/ — Dataset files:
-  - sampled_lore_entries.json — Sampled raw data entries.
-  - extracted_triples.json — Subject–predicate–object triples extracted from the text.
-  - nodes.csv and edges.csv — CSV files representing the graph structure.
-- cypher_batches/ — Cypher script batches to recreate the graph in Memgraph Cloud if needed.
-- app/ — Streamlit app for interactive exploration of the graph.
-- AI_usage.md — Documentation of how AI tools were integrated into the workflow.
-- README.md — Project documentation and instructions.
+- `notebooks/` — Jupyter Notebook with data processing, graph construction, and documentation of the process.
+- `data/` — Dataset files:
+  - `sampled_lore_entries.json` — Sampled raw data entries.
+  - `extracted_triples.json` — Subject–predicate–object triples extracted from the text.
+  - `nodes.csv` and `edges.csv` — CSV files representing the graph structure.
+- `app/` — Streamlit app for interactive exploration of the graph.
+- `AI_usage.md` — Documentation of how AI tools were integrated into the workflow.
+- `README.md` — Project documentation and instructions.
 
 ---
 
@@ -36,14 +35,14 @@ It contains item names, in-game descriptions, and additional lore knowledge sour
 - `sampled_lore_entries.json`: A smaller sample of entries used to test and iterate over the extraction process.
 - `ds3.json`: The original raw dataset (not included in this repository due to size constraints; see source link above to download).
 
-
 ### Data Example
 
-    {
-      "name": "Blood Red and White Shield",
-      "description": "Standard round wooden shield. It features a striking red and white design. Wooden shields are light, manageable, and offer relatively high magic absorption.",
-      "knowledge": "Skill: Parry — Repel an attack at the right time to follow up with a critical hit. Works while equipped in either hand."
-    }
+<pre><code>{
+  "name": "Blood Red and White Shield",
+  "description": "Standard round wooden shield. It features a striking red and white design. Wooden shields are light, manageable, and offer relatively high magic absorption.",
+  "knowledge": "Skill: Parry — Repel an attack at the right time to follow up with a critical hit. Works while equipped in either hand."
+}
+</code></pre>
 
 ### Token Estimation and Sampling
 
@@ -55,20 +54,22 @@ It contains item names, in-game descriptions, and additional lore knowledge sour
 
 ## 🔗 Deployment
 
-The graph is deployed in Memgraph Cloud, an online graph database platform.
+The graph is deployed in **Memgraph Cloud**, an online graph database platform.
 
 Memgraph was used for:
 
 - Designing and testing the graph schema.
 - Populating the graph with nodes and relationships derived from the lore data.
 
-The graph structure is then exposed via an interactive Streamlit app, offering a user-friendly interface for exploration, visualization, and question-answering — without requiring knowledge of Cypher queries or database access.
+The graph structure is then exposed via an interactive **Streamlit** app, offering a user-friendly interface for exploration, visualization, and question-answering — without requiring knowledge of Cypher queries or database access.
 
 ---
 
 ## 🚀 Explore the Graph — Streamlit App
 
 An interactive Streamlit app is included in this repository to make exploration accessible.
+
+🔗 [Launch the app](https://dark-souls.streamlit.app/)
 
 The app allows users to:
 
@@ -77,12 +78,11 @@ The app allows users to:
 - Explore the structure of the lore without writing queries.
 - Run pre-defined queries and question-answering tasks.
 
-To run the app locally:
+You can also run the app locally using:
 
-    cd app
-    streamlit run app.py
+<pre><code>streamlit run app.py</code></pre>
 
-Further instructions on setup and usage are provided in the /app/ folder.
+Further instructions are provided in the `/app/` folder.
 
 ---
 
@@ -90,13 +90,13 @@ Further instructions on setup and usage are provided in the /app/ folder.
 
 ### Nodes
 
-- Label: Entity
-- Property: id (entity name, for example, "Blood Red and White Shield")
+- Label: `Entity`
+- Property: `id` (entity name, e.g., `"Blood Red and White Shield"`)
 
 ### Relationships
 
 - Various types based on extracted predicates.
-- Examples: IS, HAS_SKILL, OFFER, ENGRAVED_WITH, SYMBOLIZES, etc.
+- Examples: `IS`, `HAS_SKILL`, `OFFER`, `ENGRAVED_WITH`, `SYMBOLIZES`, etc.
 
 The schema was automatically generated from subject–predicate–object triples extracted from item descriptions.
 
@@ -108,29 +108,28 @@ Language models were used to assist in:
 
 - Extracting subject–predicate–object triples from free-text item descriptions.
 - Accelerating parts of the data preparation and cleaning process.
-- Drafting code templates for graph construction, Cypher generation, and documentation.
+- Drafting and proofreading code templates and documentation.
 
 This project combined automation with manual validation to ensure accuracy and semantic relevance.
 
-A more detailed description of AI integration is provided in AI_usage.md.
+A more detailed description of AI integration is provided in [`AI_usage.md`](AI_usage.md).
 
 ---
 
-## 🎯 Deliverables
+## 📦 What’s Included
 
-- A fully functional knowledge graph of Dark Souls lore.
-- CSV files (nodes.csv and edges.csv) representing the graph structure.
-- Cypher scripts (in /cypher_batches/) for graph reproduction if needed.
-- An interactive Streamlit app for exploring the graph.
-- Full documentation, including this README and the process notebook.
+This repository includes:
+
+- ✅ A functional knowledge graph of Dark Souls lore (deployed via Neo4j and Streamlit).
+- ✅ CSV files (`nodes.csv` and `edges.csv`) representing the graph structure.
+- ✅ A public Streamlit app for interactive exploration.
+- ✅ Full documentation, including the annotated notebook and this README.
 
 ---
 
 ## 👩‍💻 Author
 
-Nina Cunha — Data Scientist | Graph Enthusiast | PhD Economist
+**Nina Cunha** — Data Scientist | Graph Enthusiast | PhD Economist
 
-- LinkedIn: https://www.linkedin.com/in/nina-menezes-cunha/
-- GitHub: https://github.com/ninamcunha
-
----
+- 🔗 [LinkedIn](https://www.linkedin.com/in/nina-menezes-cunha/)
+- 💻 [GitHub](https://github.com/ninamcunha)
