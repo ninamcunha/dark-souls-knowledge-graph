@@ -16,3 +16,6 @@ __pycache__/
 
 # Large dataset not included
 ds3.json
+
+# Generated frontend assets
+lib/
