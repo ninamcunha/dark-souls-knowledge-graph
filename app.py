@@ -4,6 +4,10 @@ import pandas as pd
 import networkx as nx
 from pyvis.network import Network
 import streamlit.components.v1 as components
+from openai import OpenAI
+
+# Load OpenAI client using secrets
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # Page config
 st.set_page_config(page_title="Dark Souls Knowledge Graph", layout="wide")
@@ -63,3 +67,53 @@ net.repulsion()
 net.save_graph("graph.html")
 with open("graph.html", "r", encoding="utf-8") as HtmlFile:
     components.html(HtmlFile.read(), height=750)
+
+# Natural Language Question-to-Cypher Interface Using GPT-4
+st.subheader("💬 Ask a question about the Dark Souls graph")
+
+question = st.text_input("Type your question (e.g., 'Which weapons are effective against crowds?')")
+
+def generate_cypher_query(natural_question):
+    prompt = f"""
+You are a helpful assistant. Translate the user's natural language question into a valid Cypher query for a Neo4j graph.
+
+The graph structure is:
+- Nodes have label `Entity` and an `id` property.
+- All relationships use the generic label `RELATION` with a `type` property that describes the relationship (e.g., 'wield', 'symbolizes').
+
+Always use the following pattern for relationships:
+[:RELATION {{type: 'wield'}}]
+
+Only return the Cypher query. No explanations.
+
+Now translate this question:
+{natural_question}
+    """.strip()
+
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are an expert Cypher assistant for a Neo4j knowledge graph."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.2,
+    )
+    return response.choices[0].message.content.strip()
+
+if question:
+    with st.spinner("Generating Cypher query..."):
+        cypher_query = generate_cypher_query(question)
+        st.code(cypher_query, language="cypher")
+
+        try:
+            with driver.session() as session:
+                result = session.run(cypher_query)
+                data = [record.data() for record in result]
+
+            if data:
+                df = pd.DataFrame(data)
+                st.dataframe(df)
+            else:
+                st.warning("No results found.")
+        except Exception as e:
+            st.error(f"Failed to execute query: {e}")

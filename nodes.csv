@@ -105,7 +105,6 @@ common Lothric soldiers,Entity
 a mix of miscellaneous metals,Entity
 Medium shields,Entity
 "a practical balance of damage absorption, stability and weight",Entity
-,Entity
 repelling an attack to follow up with a critical hit,Entity
 Lingering Dragoncrest Ring+1,Entity
 length of spell effect,Entity
@@ -262,7 +261,6 @@ all,Entity
 Crystal Great Machete,Entity
 worker's tool in the Undead Settlement,Entity
 slash attack,Entity
-Sharpen,Entity
 Old Wolf Curved Sword,Entity
 old wolf,Entity
 Watchdogs of Farron,Entity
@@ -383,7 +381,6 @@ crest,Entity
 Silver Knights,Entity
 old royal family,Entity
 humble manor and ruined cathedral,Entity
-goddess,Entity
 goddess's blessing,Entity
 knights' shields,Entity
 Blood Llewellyn Shield,Entity
