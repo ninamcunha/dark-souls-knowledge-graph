@@ -54,14 +54,22 @@ It contains item names, in-game descriptions, and additional lore knowledge sour
 
 ## 🔗 Deployment
 
-The graph is deployed in **Memgraph Cloud**, an online graph database platform.
+The graph is deployed in **Neo4j AuraDB**, a fully managed cloud graph database service.
 
-Memgraph was used for:
+Neo4j was used for:
 
-- Designing and testing the graph schema.
-- Populating the graph with nodes and relationships derived from the lore data.
+- **Storing** the structured knowledge graph extracted from the Dark Souls lore.
+- **Managing** labeled nodes and typed relationships using the Cypher query language.
+- **Powering** real-time graph querying integrated into the Streamlit app.
 
-The graph structure is then exposed via an interactive **Streamlit** app, offering a user-friendly interface for exploration, visualization, and question-answering — without requiring knowledge of Cypher queries or database access.
+The graph was populated by:
+
+- Establishing a secure connection to the Neo4j AuraDB instance using the official Neo4j Python driver.
+- Uploading data from `nodes.csv` and `edges.csv`:
+  - Nodes are labeled `Entity` and contain an `id` property.
+  - Relationships are created using the `source`, `target`, and `type` columns from the edge list.
+
+This setup enables seamless interaction between the Streamlit frontend and the graph backend, allowing users to explore, visualize, and query the knowledge graph without needing direct access to the database.
 
 ---
 
@@ -73,10 +81,11 @@ An interactive Streamlit app is included in this repository to make exploration 
 
 The app allows users to:
 
-- Search for entities (e.g., items, places, characters).
-- Visualize relationships between entities.
-- Explore the structure of the lore without writing queries.
-- Run pre-defined queries and question-answering tasks.
+- 📄 Browse the full dataset of graph relationships in tabular form.
+- 🌐 Visualize the complete knowledge graph with a size control slider.
+- ❓ Ask natural-language questions about the lore (e.g., “Which weapons are wielded by Black Knights?”).
+- ⚡ View results as both a table and a dynamic subgraph visualization.
+- 🧠 Read automatic interpretations of query results written by a language model.
 
 You can also run the app locally using:
 
@@ -106,9 +115,11 @@ The schema was automatically generated from subject–predicate–object triples
 
 Language models were used to assist in:
 
-- Extracting subject–predicate–object triples from free-text item descriptions.
-- Accelerating parts of the data preparation and cleaning process.
-- Drafting and proofreading code templates and documentation.
+- 🔎 Extracting subject–predicate–object triples from free-text item descriptions.
+- 🧹 Accelerating parts of the data preparation and cleaning process.
+- 🧠 Interpreting Cypher query results into short human-readable summaries.
+- 🧪 Translating natural-language questions into Cypher queries in real time.
+- 📚 Understanding and exploring the lore and structure of the Dark Souls universe, since I had no prior familiarity with the game world.
 
 This project combined automation with manual validation to ensure accuracy and semantic relevance.
 
@@ -122,7 +133,7 @@ This repository includes:
 
 - ✅ A functional knowledge graph of Dark Souls lore (deployed via Neo4j and Streamlit).
 - ✅ CSV files (`nodes.csv` and `edges.csv`) representing the graph structure.
-- ✅ A public Streamlit app for interactive exploration.
+- ✅ A public Streamlit app for interactive exploration and QA.
 - ✅ Full documentation, including the annotated notebook and this README.
 
 ---

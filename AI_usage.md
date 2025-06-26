@@ -14,18 +14,31 @@ This step:
 - Enables accurate identification of implicit connections (e.g., linking characters to locations or abilities).
 - Scales to large sets of unstructured game data while maintaining high semantic quality.
 
+## 💬 Natural-Language Question Answering with AI
+
+To make the graph easier to explore and understand, I implemented a **natural-language QA interface** using GPT-4o within the Streamlit app. AI is used in two critical stages:
+
+1. **Query generation:** When the user types a question in plain English, GPT-4o generates a valid Cypher query based on the structure and relationships of the Neo4j graph.
+2. **Interpretation of results:** After the query is executed, the resulting relationships are summarized by GPT-4o into a short, readable explanation (3–5 sentences).
+
+This dual use of AI allows even non-technical users to interact naturally with the graph and understand its structure, bridging the gap between lore complexity and usability.
+
 ## ⚙️ Additional AI-Assisted Work
 
-While GPT-4o was only used programmatically for triple extraction, general-purpose AI tools were used throughout the development process to improve quality and efficiency:
+In addition to core logic, AI tools were used throughout development to improve quality and efficiency:
 
-- **Code refinement**: AI assistants were used to refactor Python code (e.g., adapting to Streamlit's latest caching API).
-- **Text proofing**: All explanatory and descriptive texts—such as those in the notebook and README—were initially written manually to reflect the project's goals and narrative tone. Language models were then used to **proofread and refine** these texts, ensuring clarity, correctness, and consistency.
-- **Debugging**: AI tools were occasionally consulted to resolve dependency issues and Streamlit deployment problems.
+- **Code refinement:** Refactoring and adapting Python code (e.g., modern Streamlit patterns).
+- **Text proofing:** All text in the notebook and documentation was reviewed and improved using language models.
+- **Debugging:** LLMs helped resolve deployment and dependency issues in Python and Streamlit.
+- **Domain support:** Since I wasn’t previously familiar with *Dark Souls*, I used AI tools to:
+  - Understand core lore concepts, characters, and terminology.
+  - Validate extracted relationships and suggest improvements.
+  - Generate realistic and diverse example questions for the QA interface.
 
-While these uses were important for productivity, they were complementary to the core logic and reasoning, which were driven by human design.
+These uses complemented human-led design and ensured contextual accuracy.
 
 ## 🎯 Summary
 
-- The only model used in the graph construction pipeline was **GPT-4o**, via API, to extract relational triples.
-- All other uses of AI (writing, formatting, debugging) supported—but did not replace—project decision-making.
-- This approach allowed me to scale up semantic extraction while retaining control over graph quality and structure.
+- AI is used for both **graph construction** (triple extraction) and **graph interaction** (question generation + result interpretation).
+- Supporting AI use cases include text editing, debugging, and knowledge discovery.
+- This human-in-the-loop approach enabled semantic extraction at scale while maintaining full control over quality and narrative integrity.
