@@ -4,16 +4,16 @@ import pandas as pd
 import networkx as nx
 from pyvis.network import Network
 import streamlit.components.v1 as components
-from openai import OpenAI
+import openai
 
-# Load OpenAI client using secrets
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+# ✅ Load OpenAI API key
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-# Page config
+# 🔧 Page config
 st.set_page_config(page_title="Dark Souls Knowledge Graph", layout="wide")
 st.title("🕹️ Dark Souls Knowledge Graph Explorer")
 
-# Neo4j connection
+# 🔌 Neo4j connection
 uri = st.secrets["NEO4J_URI"]
 user = st.secrets["NEO4J_USERNAME"]
 password = st.secrets["NEO4J_PASSWORD"]
@@ -24,14 +24,7 @@ def create_driver(uri, user, password):
 
 driver = create_driver(uri, user, password)
 
-# Cypher query (limit is set later)
-def build_query(limit):
-    return f"""
-    MATCH (n:Entity)-[r]->(m:Entity)
-    RETURN n.id AS source, type(r) AS relation, m.id AS target
-    LIMIT {limit}
-    """
-
+# 🧠 Run Cypher queries
 @st.cache_data
 def run_query(query):
     with driver.session() as session:
@@ -39,36 +32,41 @@ def run_query(query):
         data = [record.data() for record in result]
     return pd.DataFrame(data)
 
-# Default limit
-limit = 100
-query = build_query(limit)
-df = run_query(query)
+# 📦 Build Cypher query for graph display
+def build_query(limit):
+    return f"""
+    MATCH (n:Entity)-[r]->(m:Entity)
+    RETURN n.id AS source, type(r) AS relation, m.id AS target
+    LIMIT {limit}
+    """
 
-# Show sample
+# 📊 Graph preview
 st.subheader("📄 Graph Data Sample")
+default_limit = 100
+df = run_query(build_query(default_limit))
 st.dataframe(df)
 
-# Slider (below table)
+# 🔧 Slider to control graph size
 limit = st.slider("Number of relationships to visualize", 10, 500, 100, key="limit_slider")
-query = build_query(limit)
-df = run_query(query)
+df = run_query(build_query(limit))
 
-# Build graph
+# 🌐 Build graph with PyVis
 G = nx.from_pandas_edgelist(df, source="source", target="target", edge_attr="relation", create_using=nx.DiGraph())
-
 net = Network(height="750px", width="100%", bgcolor="#222222", font_color="white", directed=True)
+
 for node in G.nodes():
     net.add_node(node, label=node, title=node)
+
 for source, target, data in G.edges(data=True):
     net.add_edge(source, target, title=data["relation"], label=data["relation"])
-net.repulsion()
 
-# Save and display
+net.repulsion()
 net.save_graph("graph.html")
+
 with open("graph.html", "r", encoding="utf-8") as HtmlFile:
     components.html(HtmlFile.read(), height=750)
 
-# Natural Language Question-to-Cypher Interface Using GPT-4
+# 💬 Natural Language to Cypher (GPT-4)
 st.subheader("💬 Ask a question about the Dark Souls graph")
 
 question = st.text_input("Type your question (e.g., 'Which weapons are effective against crowds?')")
@@ -90,7 +88,7 @@ Now translate this question:
 {natural_question}
     """.strip()
 
-    response = client.chat.completions.create(
+    response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
             {"role": "system", "content": "You are an expert Cypher assistant for a Neo4j knowledge graph."},
@@ -100,6 +98,7 @@ Now translate this question:
     )
     return response.choices[0].message.content.strip()
 
+# ▶️ Run Cypher from user question
 if question:
     with st.spinner("Generating Cypher query..."):
         cypher_query = generate_cypher_query(question)
@@ -111,8 +110,7 @@ if question:
                 data = [record.data() for record in result]
 
             if data:
-                df = pd.DataFrame(data)
-                st.dataframe(df)
+                st.dataframe(pd.DataFrame(data))
             else:
                 st.warning("No results found.")
         except Exception as e:
