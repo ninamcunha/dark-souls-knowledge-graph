@@ -3,3 +3,4 @@ pandas
 neo4j
 networkx
 pyvis
+openai
