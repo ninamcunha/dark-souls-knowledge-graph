@@ -15,16 +15,16 @@ st.set_page_config(page_title="Dark Souls Knowledge Graph", layout="wide")
 st.title("Dark Souls Knowledge Graph Explorer")
 
 st.markdown("""
-Welcome to the **Dark Souls Knowledge Graph Explorer** 🛡️🗺️
+Welcome to the **Dark Souls Knowledge Graph Explorer**
 
 This interactive tool allows you to explore the Dark Souls universe through a knowledge graph built from item descriptions and lore.
 
 **Here’s what you can do:**
-- 📄 Preview the dataset as a table of relationships.
-- 🌐 Explore a dynamic graph of up to 500 relationships.
-- 🤖 Ask questions in natural language and generate Cypher queries.
-- 📋 View the results in a table and visual subgraph.
-- 🧠 Get an automatic interpretation of what the results mean.
+- Preview the dataset as a table of relationships.
+- Explore a dynamic graph of up to 500 relationships.
+- Ask questions in natural language and generate Cypher queries.
+- View the results in a table and visual subgraph.
+- Get an automatic interpretation of what the results mean.
 
 Use the slider and input tools below to start exploring!
 """)
