@@ -4,12 +4,13 @@ import pandas as pd
 import networkx as nx
 from pyvis.network import Network
 import streamlit.components.v1 as components
-import openai
+from openai import OpenAI
+from relationship_types import RELATIONSHIP_TYPES
 
-# ✅ Load OpenAI API key
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+# 🔐 Load OpenAI API client
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-# 🔧 Page config
+# 🔧 Streamlit page settings
 st.set_page_config(page_title="Dark Souls Knowledge Graph", layout="wide")
 st.title("🕹️ Dark Souls Knowledge Graph Explorer")
 
@@ -24,7 +25,7 @@ def create_driver(uri, user, password):
 
 driver = create_driver(uri, user, password)
 
-# 🧠 Run Cypher queries
+# 🧠 Helper to run Cypher queries
 @st.cache_data
 def run_query(query):
     with driver.session() as session:
@@ -32,7 +33,7 @@ def run_query(query):
         data = [record.data() for record in result]
     return pd.DataFrame(data)
 
-# 📦 Build Cypher query for graph display
+# 📦 Query to build graph data
 def build_query(limit):
     return f"""
     MATCH (n:Entity)-[r]->(m:Entity)
@@ -40,17 +41,17 @@ def build_query(limit):
     LIMIT {limit}
     """
 
-# 📊 Graph preview
+# 📊 Graph preview section
 st.subheader("📄 Graph Data Sample")
 default_limit = 100
 df = run_query(build_query(default_limit))
 st.dataframe(df)
 
-# 🔧 Slider to control graph size
+# 🎛️ Slider to control graph size
 limit = st.slider("Number of relationships to visualize", 10, 500, 100, key="limit_slider")
 df = run_query(build_query(limit))
 
-# 🌐 Build graph with PyVis
+# 🌐 Build and render PyVis network graph
 G = nx.from_pandas_edgelist(df, source="source", target="target", edge_attr="relation", create_using=nx.DiGraph())
 net = Network(height="750px", width="100%", bgcolor="#222222", font_color="white", directed=True)
 
@@ -66,45 +67,64 @@ net.save_graph("graph.html")
 with open("graph.html", "r", encoding="utf-8") as HtmlFile:
     components.html(HtmlFile.read(), height=750)
 
-# 💬 Natural Language to Cypher (GPT-4)
+# 💬 Natural Language Question Section
 st.subheader("💬 Ask a question about the Dark Souls graph")
 
-question = st.text_input("Type your question (e.g., 'Which weapons are effective against crowds?')")
+question = st.text_input("Type your question (e.g., 'Which weapons are effective against dragons?')")
 
+# 🧠 Generate Cypher query using GPT-4 and valid relation types
 def generate_cypher_query(natural_question):
-    prompt = f"""
-You are a helpful assistant. Translate the user's natural language question into a valid Cypher query for a Neo4j graph.
+    relation_list = ", ".join(f"`{rel}`" for rel in RELATIONSHIP_TYPES)
 
-The graph structure is:
-- Nodes have label `Entity` and an `id` property.
-- All relationships use the generic label `RELATION` with a `type` property that describes the relationship (e.g., 'wield', 'symbolizes').
+    system_prompt = f"""
+You are a Cypher assistant that ONLY generates Cypher queries for a Neo4j graph.
 
-Always use the following pattern for relationships:
-[:RELATION {{type: 'wield'}}]
+GRAPH STRUCTURE:
+- Nodes are labeled `Entity` and each has an `id` property.
+- Edges are labeled with REAL RELATIONSHIP TYPES. Valid types are: {relation_list}
 
-Only return the Cypher query. No explanations.
+❌ Forbidden types: related_to, associated_with, connected_to, is_related_to, is_associated_with, has_relation, has_association
+✅ Only use exact types from the list above.
 
-Now translate this question:
-{natural_question}
+SPECIAL CASES:
+- If the user's question mentions a **general category** like "shields", "swords", or "knights", do NOT assume it is the exact node id.
+  Instead, use a partial match:
+    WHERE toLower(n.id) CONTAINS "shield"
+- This ensures broader coverage across similar node names.
+
+EXAMPLES:
+- ❌ WRONG: MATCH (a:Entity {{id: "shields"}})-[r]->(b)
+- ✅ CORRECT: MATCH (a:Entity)-[r]->(b) WHERE toLower(a.id) CONTAINS "shield"
+
+If unsure, fall back to:
+  MATCH (a:Entity {{id: 'X'}})-[r]->(b:Entity) RETURN type(r), b.id
+
+YOUR TASK:
+- Read the user's natural language question
+- Identify the intent
+- Translate it into a valid Cypher query using ONLY the allowed relationships
+
+OUTPUT:
+Only return a single Cypher query. DO NOT add explanations.
     """.strip()
 
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": "You are an expert Cypher assistant for a Neo4j knowledge graph."},
-            {"role": "user", "content": prompt}
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": natural_question}
         ],
-        temperature=0.2,
+        temperature=0.0,
     )
     return response.choices[0].message.content.strip()
 
-# ▶️ Run Cypher from user question
+# ▶️ Run QA from input
 if question:
     with st.spinner("Generating Cypher query..."):
-        cypher_query = generate_cypher_query(question)
-        st.code(cypher_query, language="cypher")
-
         try:
+            cypher_query = generate_cypher_query(question)
+            st.code(cypher_query, language="cypher")
+
             with driver.session() as session:
                 result = session.run(cypher_query)
                 data = [record.data() for record in result]
