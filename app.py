@@ -6,11 +6,9 @@ from pyvis.network import Network
 import streamlit.components.v1 as components
 from openai import OpenAI
 from relationship_types import RELATIONSHIP_TYPES
+import re
 
-# Load OpenAI API client
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-
-# Streamlit page settings
+# Setup
 st.set_page_config(page_title="Dark Souls Knowledge Graph", layout="wide")
 st.title("Dark Souls Knowledge Graph Explorer")
 
@@ -29,85 +27,59 @@ This interactive tool allows you to explore the Dark Souls universe through a kn
 Use the slider and input tools below to start exploring!
 """)
 
-
-# Neo4j connection
+# Neo4j + OpenAI setup
 uri = st.secrets["NEO4J_URI"]
 user = st.secrets["NEO4J_USERNAME"]
 password = st.secrets["NEO4J_PASSWORD"]
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 @st.cache_resource
 def create_driver(uri, user, password):
     return GraphDatabase.driver(uri, auth=(user, password))
-
 driver = create_driver(uri, user, password)
 
-# Helper to run Cypher queries
 @st.cache_data
 def run_query(query):
     with driver.session() as session:
         result = session.run(query)
-        data = [record.data() for record in result]
-    return pd.DataFrame(data)
+        return pd.DataFrame([record.data() for record in result])
 
-# Query to build graph data
-def build_query(limit):
-    query = (
-        "MATCH (n:Entity)-[r]->(m:Entity) "
-        "RETURN n.id AS source, type(r) AS relation, m.id AS target "
-        f"LIMIT {limit}"
-    )
-    return query
-
-# Graph preview section
+# Graph preview
 st.subheader("Graph Data Sample")
-default_limit = 100
-df = run_query(build_query(default_limit))
+df = run_query("MATCH (n:Entity)-[r]->(m:Entity) RETURN n.id AS source, type(r) AS relation, m.id AS target LIMIT 100")
 st.dataframe(df)
 
+# Visualization
 st.markdown("## Mapping the Dark Souls Universe")
+limit = st.slider("Number of relationships to visualize", 10, 500, 100)
+df = run_query(f"MATCH (n:Entity)-[r]->(m:Entity) RETURN n.id AS source, type(r) AS relation, m.id AS target LIMIT {limit}")
 
-# Slider to control graph size
-limit = st.slider("Number of relationships to visualize", 10, 500, 100, key="limit_slider")
-df = run_query(build_query(limit))
-
-# Build and render PyVis network graph
 G = nx.from_pandas_edgelist(df, source="source", target="target", edge_attr="relation", create_using=nx.DiGraph())
 net = Network(height="750px", width="100%", bgcolor="#222222", font_color="white", directed=True)
-
 for node in G.nodes():
     net.add_node(node, label=node, title=node)
-
 for source, target, data in G.edges(data=True):
     net.add_edge(source, target, title=data["relation"], label=data["relation"])
-
 net.repulsion()
 net.save_graph("graph.html")
-
 with open("graph.html", "r", encoding="utf-8") as HtmlFile:
     components.html(HtmlFile.read(), height=750)
 
-# Natural Language Question Section
+# Session setup
+for key in ["question_input", "selected_question", "cypher_query", "query_result", "has_run_query"]:
+    if key not in st.session_state:
+        st.session_state[key] = "" if key != "query_result" else None
+
+# Input fields
 st.subheader("Ask a question about the Dark Souls graph")
-
-# Session state initialization
-if "question_input" not in st.session_state:
-    st.session_state["question_input"] = ""
-if "selected_question" not in st.session_state:
-    st.session_state["selected_question"] = ""
-if "cypher_query" not in st.session_state:
-    st.session_state["cypher_query"] = ""
-if "query_result" not in st.session_state:
-    st.session_state["query_result"] = None
-if "clear_trigger" not in st.session_state:
-    st.session_state["clear_trigger"] = False
-
-# UI layout for inputs
-st.session_state["question_input"] = st.text_input(
+question_input = st.text_input(
     "Type your question (e.g., 'Which weapons are wielded by Black Knights?')",
     value=st.session_state["question_input"]
 )
+if question_input.strip():
+    st.session_state["selected_question"] = ""
+st.session_state["question_input"] = question_input
 
-st.markdown("Or pick from predefined questions:")
 suggested_questions = [
     "Which weapons are wielded by Black Knights?",
     "What weapons are effective against specific enemy types?",
@@ -121,30 +93,53 @@ selected_index = (
     if st.session_state["selected_question"] in suggested_questions
     else 0
 )
-st.session_state["selected_question"] = st.selectbox(
+selected_question = st.selectbox(
     "Predefined question", [placeholder_option] + suggested_questions, index=selected_index
 )
-
-# Determine final question
-final_question = st.session_state["question_input"] or (
-    st.session_state["selected_question"] if st.session_state["selected_question"] != placeholder_option else ""
-)
-
-# Buttons
-col1, col2 = st.columns([1, 1])
-run_clicked = col1.button("Run Question")
-clear_clicked = col2.button("Clear")
-
-# Clear logic
-if clear_clicked:
+if selected_question != placeholder_option:
     st.session_state["question_input"] = ""
-    st.session_state["selected_question"] = ""
-    st.session_state["cypher_query"] = ""
-    st.session_state["query_result"] = None
-    st.session_state["clear_trigger"] = True
+    st.session_state["selected_question"] = selected_question
 
-# Generate Cypher query
-def generate_cypher_query(natural_question):
+final_question = ""
+if question_input.strip() and selected_question == placeholder_option:
+    final_question = question_input.strip()
+elif selected_question != placeholder_option and not question_input.strip():
+    final_question = selected_question.strip()
+final_question = re.sub(r"^\s*\d+\.\s*", "", final_question)
+
+# Manual queries (validated)
+manual_queries = {
+    "Which weapons are wielded by Black Knights?": """MATCH (e1:Entity {id: 'Black Knights'})-[:wield]->(e2:Entity)
+RETURN e2.id AS source, 'wield' AS relation, 'Black Knights' AS target""",
+    "What weapons are effective against specific enemy types?": """MATCH (w:Entity)-[:is_effective_against]->(e:Entity)
+RETURN w.id AS source, 'is_effective_against' AS relation, e.id AS target""",
+    "What skills are associated with specific weapons?": """MATCH (s:Entity)-[:has_skill]->(k:Entity)
+RETURN s.id AS source, 'has_skill' AS relation, k.id AS target""",
+    "What properties or affiliations do shields reveal?": """MATCH (s:Entity)-[r]->(e:Entity)
+WHERE toLower(s.id) CONTAINS "shield"
+RETURN s.id AS source, type(r) AS relation, e.id AS target""",
+    "Who are the Black Knights related to?": """MATCH (e1:Entity {id: 'Black Knights'})-[r]->(e2:Entity)
+RETURN 'Black Knights' AS source, type(r) AS relation, e2.id AS target"""
+}
+
+# Manual interpretations
+interpretations = {
+    "Who are the Black Knights related to?": """The Black Knights in Dark Souls have a rich web of connections that highlight their tragic lore. They are shown to have faced chaos demons and foes larger than themselves, emphasizing their valor in the face of overwhelming odds. Their armor was charred black, suggesting exposure to intense fire—perhaps as a result of these battles. They also wield iconic weapons like the Heavy Black Knight Sword and the Black Knight Sword, reinforcing their identity as elite warriors. These relationships paint a picture of formidable yet doomed soldiers, forever marked by the flames and wars of the past.""",
+
+    "Which weapons are wielded by Black Knights?": """The graph reveals that Black Knights are directly linked to two powerful weapons: the Black Knight Sword and the Heavy Black Knight Sword. These weapons are deeply associated with their combat style—brutal, deliberate, and overwhelming. Their presence in the hands of the Black Knights reinforces their image as elite adversaries within the Dark Souls universe. The query’s precision highlights only confirmed wielded items, stripping away speculation and grounding the connection in established lore.""",
+
+    "What properties or affiliations do shields reveal?": """The graph unveils that shields in Dark Souls serve not only defensive functions but also reflect lore, symbolism, and mechanical variety. Some shields are engraved with crests, bear emblems, or are decorated with motifs like dragons or flames—highlighting affiliation and craftsmanship. Others are associated with specific factions or characters, such as the Holy Knights of the Sunless Realms or Knightslayer Tsorig. Functionally, they offer effects like fire or magic resistance, parrying capability, and skill enhancements. Interestingly, some shields were even made to shame weak-willed knights, hinting at deeper narrative undertones. Altogether, shields act as narrative artifacts as much as tools for survival.""",
+
+    "What weapons are effective against specific enemy types?": """The dataset identifies a small but insightful set of weapon-enemy effectiveness relationships. The Blood Club is noted as effective against most foes, making it a versatile and broadly useful choice. The Lightning Broadsword stands out as being particularly effective against crowds, suggesting area-of-effect damage or multi-target capabilities. Although limited in number, these connections offer strategic guidance, helping players optimize weapon selection based on the combat scenarios they face.""",
+
+    "What skills are associated with specific weapons?": """This query reveals how specific weapons are tied to unique combat skills in the Dark Souls universe. The Dark Bastard Sword, for example, is linked to 'Stomp,' a skill known for enhancing poise and delivering powerful counterattacks. The Gargoyle Flame Hammer is associated with 'Kindled Flurry,' likely a flame-infused combo attack. These connections emphasize that weapon choice isn't only about stats, but also about the combat style they enable. Even with just two matches, the graph demonstrates how skills are woven into weapon identity."""
+}
+
+
+# Query generator
+def generate_query(question):
+    if question in manual_queries:
+        return manual_queries[question]
     relation_list = ", ".join(f"`{rel}`" for rel in RELATIONSHIP_TYPES)
     system_prompt = f"""
 You are a Cypher expert translating natural language into Neo4j Cypher queries.
@@ -155,95 +150,96 @@ GRAPH STRUCTURE:
 
 RULES:
 - Use only the exact relationships above. Do not invent or conjugate them.
-  ❌ For example, do NOT use "wielded_by" if the real relation is "wield".
-- Do not use generic terms like "related_to", "associated_with", "connected_to", etc.
+- Always use variable r if you call type(r) in RETURN.
+- Do not use generic terms like "related_to", "associated_with", etc.
 
-WHEN RETURNING RESULTS:
-- Always use: RETURN a.id AS source, type(r) AS relation, b.id AS target
-
-WHEN MATCHING:
-- If the question refers to a specific entity (e.g. "Black Knights"), use exact match:
-  MATCH (a:Entity {{id: "Black Knights"}})-[r]->(b:Entity)
-
-- If the question refers to a category (e.g. "shields"), use partial match:
-  MATCH (a:Entity)-[r]->(b:Entity)
-  WHERE toLower(a.id) CONTAINS "shield"
-
-IF UNSURE:
-Use fallback pattern with correct aliases:
-  MATCH (a:Entity {{id: "X"}})-[r]->(b:Entity) RETURN a.id AS source, type(r) AS relation, b.id AS target
-
-IMPORTANT:
-Only return the Cypher query. Do not include explanations.
+MATCHING:
+- Use exact match for specific entities (e.g. "Black Knights")
+- Use partial match (e.g. CONTAINS) for categories like "shields"
+- If unsure, use fallback:
+  MATCH (a:Entity {{id: "X"}})-[r]->(b:Entity)
+  RETURN a.id AS source, type(r) AS relation, b.id AS target
+Only return the Cypher query.
 """.strip()
-
     response = client.chat.completions.create(
         model="gpt-4",
         messages=[
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": natural_question}
+            {"role": "user", "content": question}
         ],
         temperature=0.0,
     )
     return response.choices[0].message.content.strip()
 
+# Button actions
+col1, col2 = st.columns([1, 1])
+run_clicked = col1.button("Run Question")
+clear_clicked = col2.button("Clear")
 
-# Run logic
-if run_clicked and final_question.strip():
+if clear_clicked:
+    for key in ["question_input", "selected_question", "cypher_query", "query_result", "has_run_query"]:
+        st.session_state[key] = "" if key != "query_result" else None
+    st.rerun()
+
+# Execute query
+if run_clicked and final_question:
     with st.spinner("Generating Cypher query..."):
         try:
-            cypher_query = generate_cypher_query(final_question)
+            cypher_query = generate_query(final_question)
             st.session_state["cypher_query"] = cypher_query
 
             with driver.session() as session:
                 result = session.run(cypher_query)
-                st.session_state["query_result"] = [record.data() for record in result]
+                records = [record.data() for record in result]
+
+            st.session_state["query_result"] = records
+            st.session_state["has_run_query"] = True
 
         except Exception as e:
+            st.session_state["query_result"] = []
+            st.session_state["has_run_query"] = True
             st.error(f"Failed to execute query: {e}")
 elif run_clicked:
-    st.warning("Please enter or select a question first.")
+    st.warning("Please enter or select a question.")
 
-# Display results
-if st.session_state["cypher_query"]:
-    st.code(st.session_state["cypher_query"], language="cypher")
+# Show results
+if st.session_state.get("has_run_query", False):
+    query_result = st.session_state["query_result"]
+    cypher_query = st.session_state["cypher_query"]
+    result_df = pd.DataFrame(query_result or [])
 
-if st.session_state["query_result"]:
-    st.dataframe(pd.DataFrame(st.session_state["query_result"]))
+    if cypher_query:
+        st.code(cypher_query, language="cypher")
 
-    # Graph visualization based on query result
-    result_df = pd.DataFrame(st.session_state["query_result"])
+    if result_df.empty:
+        st.info("No results returned for this query.")
+    else:
+        st.markdown("### Query Results")
+        st.dataframe(result_df)
 
-    if {"source", "relation", "target"}.issubset(result_df.columns):
         st.markdown("### Subgraph Visualization from Query")
+        df_graph = result_df.rename(columns=lambda x: x.lower())
+        if {"source", "relation", "target"}.issubset(df_graph.columns):
+            G = nx.from_pandas_edgelist(df_graph, source="source", target="target", edge_attr="relation", create_using=nx.DiGraph())
+            net = Network(height="600px", width="100%", bgcolor="#1e1e1e", font_color="white", directed=True)
 
-        # Build directed graph
-        subgraph = nx.from_pandas_edgelist(
-            result_df,
-            source="source",
-            target="target",
-            edge_attr="relation",
-            create_using=nx.DiGraph()
-        )
+            for node in G.nodes():
+                net.add_node(node, label=str(node), title=str(node))
+            for source, target, data in G.edges(data=True):
+                net.add_edge(source, target, title=data["relation"], label=data["relation"])
 
-        sub_net = Network(height="600px", width="100%", bgcolor="#1e1e1e", font_color="white", directed=True)
+            net.repulsion()
+            net.save_graph("subgraph.html")
+            with open("subgraph.html", "r", encoding="utf-8") as HtmlFile:
+                components.html(HtmlFile.read(), height=600)
 
-        for node in subgraph.nodes():
-            sub_net.add_node(node, label=node, title=node)
-
-        for source, target, data in subgraph.edges(data=True):
-            sub_net.add_edge(source, target, title=data["relation"], label=data["relation"])
-
-        sub_net.repulsion()
-        sub_net.save_graph("subgraph.html")
-
-        with open("subgraph.html", "r", encoding="utf-8") as HtmlFile:
-            components.html(HtmlFile.read(), height=600)
-
-        # ✅ Interpretation Section
-        def generate_interpretation(df, question):
-            df_sample = df.head(10).to_dict(orient="records")
-            user_prompt = f"""
+        st.markdown("### Interpretation of Results")
+        if final_question in interpretations:
+            st.write(interpretations[final_question])
+        else:
+            def generate_interpretation(df, question):
+                df_sample = df.head(10).to_dict(orient="records")
+                user_prompt = f"""
 You are an expert in Dark Souls lore and graph analysis. Based on the question and the extracted relationships from a knowledge graph, write a short paragraph (3-5 sentences) explaining what the data reveals.
 
 Question:
@@ -254,16 +250,16 @@ Relationships:
 
 Interpretation:
 """.strip()
+                response = client.chat.completions.create(
+                    model="gpt-4",
+                    messages=[
+                        {"role": "system", "content": "You are an expert at interpreting graph data from Dark Souls."},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    temperature=0.3,
+                )
+                return response.choices[0].message.content.strip()
 
-            response = client.chat.completions.create(
-                model="gpt-4",
-                messages=[{"role": "system", "content": "You are an expert at interpreting graph data from Dark Souls."},
-                          {"role": "user", "content": user_prompt}],
-                temperature=0.3,
-            )
-            return response.choices[0].message.content.strip()
-
-        st.markdown("### Interpretation of Results")
-        with st.spinner("Generating interpretation..."):
-            interpretation = generate_interpretation(result_df, final_question)
-            st.write(interpretation)
+            with st.spinner("Generating interpretation..."):
+                interpretation = generate_interpretation(result_df, final_question)
+                st.write(interpretation)

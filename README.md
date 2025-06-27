@@ -127,6 +127,37 @@ A more detailed description of AI integration is provided in [`AI_usage.md`](AI_
 
 ---
 
+## ⚠️ Challenges and Future Improvements
+
+One of the most impactful features of this project is the natural-language question-answering (QA) interface, powered by GPT-4. However, this also introduced challenges related to **model reliability and cost**.
+
+### Relationship Type Mismatches
+
+The underlying graph uses specific relationship types (e.g., `wield`, `belongs_to`, `engraved_with`). The LLM sometimes generated invalid or inferred types like `wielded_by` or `related_to`, leading to query failures or empty results.
+
+To mitigate this, a full list of valid relationship types was extracted and injected into the system prompt used by GPT-4. While this significantly reduced errors, some queries still failed due to strict matching filters, typos, or variable naming issues (e.g., using `type(r)` without defining `r`).
+
+### Fixing Core Questions with Manual Queries
+
+To address this, five core questions—those most commonly asked during testing—were handled manually:
+
+- The Cypher queries and interpretations for these questions were hardcoded into the app.
+- When a user selects one of them (or types it verbatim), **no LLM call is made**, eliminating latency and API costs.
+- Interpretations for these queries are also fixed, based on LLM style but validated manually to match the exact query results.
+
+This hybrid approach improved reliability and reduced unnecessary LLM calls.
+
+### Future Enhancements
+
+To improve open-ended question handling, future iterations of this project could explore:
+
+- 🧠 **Few-shot fine-tuning** of a smaller LLM using valid question-query examples.
+- 🧪 **Semantic query repair**, using fuzzy logic to replace invalid relationships with valid alternatives.
+- 🔁 **Fallback query relaxations**, such as switching from `id =` to `CONTAINS` matching.
+- 🗣️ **User feedback on query failure**, to help refine input phrasing.
+
+This process revealed the practical limits of real-time LLM integration and the benefits of mixing automation with **rule-based fallback strategies**.
+
 ## 📦 What’s Included
 
 This repository includes:

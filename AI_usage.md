@@ -37,6 +37,43 @@ In addition to core logic, AI tools were used throughout development to improve 
 
 These uses complemented human-led design and ensured contextual accuracy.
 
+## 🚧 Challenges with AI-Based Querying
+
+While GPT-4o provided powerful capabilities for translating natural language into Cypher, this part of the system also revealed key limitations and inspired design compromises.
+
+### Query Failures and Relationship Mismatches
+
+Despite carefully constructed prompts and an explicit list of valid relationship types, the model occasionally produced queries with:
+
+- ❌ **Invalid relationship names**, like `wielded_by` instead of `wield`.
+- 🔀 **Incorrect variable usage**, such as using `type(r)` without declaring `r`.
+- 🔍 **Overly strict matching**, which led to empty results (e.g., using `id =` instead of `CONTAINS` when querying general categories like “shields”).
+
+These issues introduced instability and made the QA interface sensitive to subtle changes in phrasing.
+
+### Fixing with Manual Overrides
+
+To mitigate this, I implemented **manual query overrides** for five core questions. These were:
+
+1. Who are the Black Knights related to?
+2. Which weapons are wielded by Black Knights?
+3. What properties or affiliations do shields reveal?
+4. What weapons are effective against specific enemy types?
+5. What skills are associated with specific weapons?
+
+For these, both the Cypher queries and the interpretations were **hardcoded** into the Streamlit app. If the user selects or types one of these exactly, the app skips the GPT-4o call and uses a fixed response. This reduced latency, eliminated API costs, and ensured reliability during demos and testing.
+
+### Lessons Learned and Future Ideas
+
+This experience surfaced broader lessons about real-time LLM use in production apps:
+
+- ✅ **Rule-based fallbacks** are essential to catch predictable failure modes.
+- ✅ **Hardcoded examples** can cover common use cases while controlling costs.
+- 🚀 **Future iterations** could fine-tune a smaller model on successful question–query pairs or introduce semantic query repair strategies.
+
+In short, while LLMs can make knowledge graphs more accessible, **hybrid systems combining AI and deterministic logic** offer a more stable and user-friendly solution.
+
+
 ## 🎯 Summary
 
 - AI is used for both **graph construction** (triple extraction) and **graph interaction** (question generation + result interpretation).
